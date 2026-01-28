@@ -1,0 +1,76 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #3e2723; /* Dark brown table color */
+    background-image: radial-gradient(circle, #4e342e 0%, #3e2723 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden; /* Prevent table from scrolling, we'll handle photo placement */
+    height: 100vh;
+    width: 100vw;
+}
+
+#table {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.photo-container {
+    position: absolute;
+    background-color: white;
+    padding: 10px 10px 30px 10px; /* Polaroid bottom is wider */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+
+.photo-container:active {
+    cursor: grabbing;
+}
+
+.photo-container img {
+    display: block;
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    pointer-events: none; /* Let the container handle clicks */
+}
+
+.controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+#upload-btn {
+    background-color: #ffeb3b;
+    border: none;
+    padding: 15px 25px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+#upload-btn:hover {
+    transform: scale(1.05);
+}
+
+#file-input {
+    display: none;
+}
+
+.title {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 24px;
+    font-weight: 300;
+    pointer-events: none;
+    z-index: 1000;
+}

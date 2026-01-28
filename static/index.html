@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Pile</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="title">My Photo Pile</div>
+    <div id="table"></div>
+
+    <div class="controls">
+        <button id="upload-btn">Upload Photo</button>
+        <input type="file" id="file-input" accept="image/*">
+    </div>
+
+    <script>
+        const table = document.getElementById('table');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        let highestZ = 1;
+
+        async function fetchPhotos() {
+            const response = await fetch('/photos');
+            const photos = await response.json();
+            table.innerHTML = '';
+            photos.forEach(photo => addPhotoToTable(photo));
+        }
+
+        function addPhotoToTable(photo) {
+            const container = document.createElement('div');
+            container.className = 'photo-container';
+
+            const img = document.createElement('img');
+            img.src = photo.url;
+
+            container.appendChild(img);
+
+            // Random position and rotation
+            const padding = 100;
+            const x = Math.random() * (window.innerWidth - 300) + 50;
+            const y = Math.random() * (window.innerHeight - 300) + 50;
+            const rotation = Math.random() * 40 - 20; // -20 to 20 degrees
+
+            container.style.left = `${x}px`;
+            container.style.top = `${y}px`;
+            container.style.transform = `rotate(${rotation}deg)`;
+            container.style.zIndex = highestZ++;
+
+            container.addEventListener('mousedown', bringToFront);
+            makeDraggable(container);
+
+            table.appendChild(container);
+        }
+
+        function bringToFront(e) {
+            this.style.zIndex = highestZ++;
+        }
+
+        function makeDraggable(element) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            element.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                // get the mouse cursor position at startup:
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                // call a function whenever the cursor moves:
+                document.onmousemove = elementDrag;
+                bringToFront.call(element);
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                // calculate the new cursor position:
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                // set the element's new position:
+                element.style.top = (element.offsetTop - pos2) + "px";
+                element.style.left = (element.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                // stop moving when mouse button is released:
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    const photo = await response.json();
+                    addPhotoToTable(photo);
+                } else {
+                    alert('Upload failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Upload failed');
+            }
+            fileInput.value = ''; // Reset input
+        });
+
+        // Initial fetch
+        fetchPhotos();
+    </script>
+</body>
+</html>
