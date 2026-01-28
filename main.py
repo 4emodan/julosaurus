@@ -10,13 +10,13 @@ from pydantic import BaseModel
 app = FastAPI()
 
 UPLOAD_DIR = "uploads"
-STATIC_DIR = "static"
+IMAGES_DIR = "images"
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR)
+if not os.path.exists(IMAGES_DIR):
+    os.makedirs(IMAGES_DIR)
 
 class Photo(BaseModel):
     id: str
@@ -24,7 +24,11 @@ class Photo(BaseModel):
 
 @app.get("/")
 async def read_index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    return FileResponse("index.html")
+
+@app.get("/style.css")
+async def read_css():
+    return FileResponse("style.css")
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
@@ -49,16 +53,18 @@ async def upload_photo(file: UploadFile = File(...)):
 @app.get("/photos", response_model=List[Photo])
 async def list_photos():
     photos = []
+    # If uploads is empty, maybe we want to show images/ as default?
+    # Actually, index.html handles the case where it gets an empty list by showing defaults if it's in static mode,
+    # but here we have a backend.
     for filename in os.listdir(UPLOAD_DIR):
         if os.path.isfile(os.path.join(UPLOAD_DIR, filename)):
-            # We use filename as ID for simplicity or uuid if we want to be more strict
             photo_id = os.path.splitext(filename)[0]
             photos.append(Photo(id=photo_id, url=f"/uploads/{filename}"))
     return photos
 
-# Serve uploads and static files
+# Serve uploads and images
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 if __name__ == "__main__":
     import uvicorn

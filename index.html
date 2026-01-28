@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Pile</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="title">My Photo Pile</div>
@@ -12,7 +12,7 @@
 
     <div class="controls">
         <button id="upload-btn">Upload Photo</button>
-        <input type="file" id="file-input" accept="image/*">
+        <input type="file" id="file-input" accept="image/*" multiple>
     </div>
 
     <script>
@@ -20,28 +20,48 @@
         const fileInput = document.getElementById('file-input');
         const uploadBtn = document.getElementById('upload-btn');
         let highestZ = 1;
+        let hasBackend = true;
+
+        const DEFAULT_PHOTOS = [
+            'images/sample1.jpg',
+            'images/sample2.jpg',
+            'images/sample3.jpg',
+            'images/sample4.jpg'
+        ];
 
         async function fetchPhotos() {
-            const response = await fetch('/photos');
-            const photos = await response.json();
-            table.innerHTML = '';
-            photos.forEach(photo => addPhotoToTable(photo));
+            try {
+                const response = await fetch('/photos');
+                if (!response.ok) throw new Error('Backend not available');
+                const photos = await response.json();
+                table.innerHTML = '';
+                photos.forEach(photo => addPhotoToTable(photo.url));
+                hasBackend = true;
+            } catch (error) {
+                console.log('Running in static mode (no backend found)');
+                hasBackend = false;
+                table.innerHTML = '';
+                DEFAULT_PHOTOS.forEach(url => addPhotoToTable(url));
+            }
         }
 
-        function addPhotoToTable(photo) {
+        function addPhotoToTable(url) {
             const container = document.createElement('div');
             container.className = 'photo-container';
 
             const img = document.createElement('img');
-            img.src = photo.url;
+            img.src = url;
+            // Handle broken images (e.g. if default photos are missing)
+            img.onerror = () => {
+                container.remove();
+            };
 
             container.appendChild(img);
 
             // Random position and rotation
-            const padding = 100;
             const x = Math.random() * (window.innerWidth - 300) + 50;
             const y = Math.random() * (window.innerHeight - 300) + 50;
-            const rotation = Math.random() * 40 - 20; // -20 to 20 degrees
+            const rotation = Math.random() * 40 - 20;
 
             container.style.left = `${x}px`;
             container.style.top = `${y}px`;
@@ -64,12 +84,11 @@
 
             function dragMouseDown(e) {
                 e = e || window.event;
+                if (e.button !== 0) return; // Only left click
                 e.preventDefault();
-                // get the mouse cursor position at startup:
                 pos3 = e.clientX;
                 pos4 = e.clientY;
                 document.onmouseup = closeDragElement;
-                // call a function whenever the cursor moves:
                 document.onmousemove = elementDrag;
                 bringToFront.call(element);
             }
@@ -77,18 +96,15 @@
             function elementDrag(e) {
                 e = e || window.event;
                 e.preventDefault();
-                // calculate the new cursor position:
                 pos1 = pos3 - e.clientX;
                 pos2 = pos4 - e.clientY;
                 pos3 = e.clientX;
                 pos4 = e.clientY;
-                // set the element's new position:
                 element.style.top = (element.offsetTop - pos2) + "px";
                 element.style.left = (element.offsetLeft - pos1) + "px";
             }
 
             function closeDragElement() {
-                // stop moving when mouse button is released:
                 document.onmouseup = null;
                 document.onmousemove = null;
             }
@@ -97,31 +113,38 @@
         uploadBtn.addEventListener('click', () => fileInput.click());
 
         fileInput.addEventListener('change', async () => {
-            const file = fileInput.files[0];
-            if (!file) return;
+            const files = Array.from(fileInput.files);
+            if (files.length === 0) return;
 
-            const formData = new FormData();
-            formData.append('file', file);
+            for (const file of files) {
+                if (hasBackend) {
+                    const formData = new FormData();
+                    formData.append('file', file);
 
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (response.ok) {
-                    const photo = await response.json();
-                    addPhotoToTable(photo);
+                    try {
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (response.ok) {
+                            const photo = await response.json();
+                            addPhotoToTable(photo.url);
+                        } else {
+                            console.error(`Upload failed for ${file.name}`);
+                        }
+                    } catch (error) {
+                        console.error('Error uploading to backend:', error);
+                        hasBackend = false; // Fallback to local
+                        addPhotoToTable(URL.createObjectURL(file));
+                    }
                 } else {
-                    alert('Upload failed');
+                    // Local only mode
+                    addPhotoToTable(URL.createObjectURL(file));
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Upload failed');
             }
-            fileInput.value = ''; // Reset input
+            fileInput.value = '';
         });
 
-        // Initial fetch
         fetchPhotos();
     </script>
 </body>
